@@ -26,6 +26,7 @@ class PushEventProcessorTest < ActiveSupport::TestCase
   end
   
   should "update the last_pushed_at attribute on initial push" do
+    stub_git_log_and_user
     repo = repositories(:johans)
     repo.update_attribute(:last_pushed_at, nil)
     @processor.expects(:log_events).returns(true)
@@ -184,8 +185,14 @@ class PushEventProcessorTest < ActiveSupport::TestCase
     git = mock
     output = [Grit::Commit.create(git, {
       :id => '33f746e21ef5122511a5a69f381bfdf017f4d66c',
+      :parents => [
+        Grit::Commit.create(git, :id => '33f746e21ef5122511a5a69f381bfdf017f4d6aa')
+      ],
+      :tree => Grit::Tree.create(git, :id => 'abcdefe21ef5122511a5a69f381bfdf017f4d6aa'),
       :author => Grit::Actor.from_string("John McClane <john@nowhere.com>"),
       :authored_date => Time.at(1233842115),
+      :committer => Grit::Actor.from_string("John McClane <john@nowhere.com>"),
+      :committed_date => Time.at(1233842115),
       :message => "This is really nice",
     })]
     @processor.stubs(:commits_from_revspec).returns(output*3)

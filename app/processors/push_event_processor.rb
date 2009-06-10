@@ -16,9 +16,12 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #++
 
+require 'uri'
+require 'net/http'
+
 class PushEventProcessor < ApplicationProcessor
   subscribes_to :push_event
-  attr_reader :oldrev, :newrev, :action, :user
+  attr_reader :oldrev, :newrev, :ref, :action, :user
   attr_accessor :repository
   
   def on_message(message)
@@ -30,6 +33,7 @@ class PushEventProcessor < ApplicationProcessor
       @repository.update_attribute(:last_pushed_at, Time.now.utc)
       self.commit_summary = hash['message']
       log_events
+      post_events
     else
       logger.error("#{self.class.name} received message, but couldn't find repo with hashed_path #{hash['gitdir']}")
     end
@@ -39,6 +43,27 @@ class PushEventProcessor < ApplicationProcessor
     logger.info("#{self.class.name} logging #{events.size} events")
     events.each do |e|
       log_event(e)
+    end
+  end
+
+  def post_events
+    require 'pp'
+    pp payload
+    return
+    
+    json = payload.to_json
+    @repository.post_receive_urls.each do |url|
+      logger.info("#{self.class.name} posting payload to #{url}")
+      res = Net::HTTP.post_form(URI.parse(url), {'payload' => json})
+      case res
+      when Net::HTTPSuccess
+        logger.info("#{self.class.name} posted successfully. Response: #{res.body}")
+        true
+      when Net::HTTPRedirect
+        true
+      else
+        false
+      end
     end
   end
   
@@ -71,8 +96,8 @@ class PushEventProcessor < ApplicationProcessor
   
   # Sets the commit summary, as served from git
   def commit_summary=(spec)
-    @oldrev, @newrev, revname = spec.split(' ')
-    r, name, @identifier = revname.split("/", 3)
+    @oldrev, @newrev, @ref = spec.split(' ')
+    r, name, @identifier = @ref.split("/", 3)
     @head_or_tag = name == 'tags' ? :tag : :head
   end
   
@@ -99,8 +124,8 @@ class PushEventProcessor < ApplicationProcessor
   end
   
   class EventForLogging
-    attr_accessor :event_type, :identifier, :email, :message, :commit_time, :user
-    attr_accessor :commit_object
+    attr_accessor :event_type, :identifier, :email, :message, :commit_time
+    attr_accessor :user, :statuses, :committer, :author, :commit_object
     attr_reader :commits
     def to_s
       "<PushEventProcessor:EventForLogging type: #{event_type} by #{email} at #{commit_time} with #{identifier}>"
@@ -178,6 +203,7 @@ class PushEventProcessor < ApplicationProcessor
       e.event_type = Action::COMMIT
       e.message = commit.message
       e.commit_object = commit
+      #e.statuses      = (statuses || "").strip.split("\n").map {|s| s.split("\t")}.inject({}) {|h,(s,p)| h[s] ||= []; h[s] << p; h}
       result << e
     end
     result
@@ -211,5 +237,32 @@ class PushEventProcessor < ApplicationProcessor
     else
       data
     end
+  end
+
+  def payload
+    event = events.first
+    commit_events = event.commits || events[1..-1] || []
+    url = "http://#{GitoriousConfig['gitorious_host']}/#{@repository.url_path}"
+    {
+      :before     => @oldrev,
+      :after      => @newrev,
+      :ref        => @ref,
+      :pushed_by  => @user.login,
+      :pushed_at  => @repository.last_pushed_at.xmlschema,
+      :project    =>  {
+        :name         => @repository.project.slug,
+        :description  => @repository.project.description,
+      },
+      :repository => {
+        :name         => @repository.name,
+        :url          => url,
+        :description  => @repository.description,
+        :clones       => @repository.clones.count,
+        :owner        => {
+          :name   => @repository.owner.title
+        }
+      },
+      :commits => commit_events.map{|c| c.commit_object.to_hash }.flatten
+    }
   end
 end

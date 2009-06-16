@@ -53,6 +53,7 @@ ActionController::Routing::Routes.draw do |map|
         :auto_complete_for_group_name => :post,
         :auto_complete_for_user_login => :post
       }
+      repo.resources :hooks
 
       repo.formatted_commits_feed "commits/*branch/feed.:format",
           :controller => "commits", :action => "feed", :conditions => {:feed => :get}

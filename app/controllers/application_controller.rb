@@ -158,6 +158,22 @@ class ApplicationController < ActionController::Base
       @repository = Repository.find_by_name_and_project_id!(params[:repository_id], @project.id)
     end
     
+    def require_owner_adminship
+      unless @owner.admin?(current_user)
+        respond_to do |format|
+          format.html {
+            flash[:error] = I18n.t "repositories_controller.adminship_error"
+            redirect_to(@owner)
+          }
+          format.xml  {
+            render :text => I18n.t( "repositories_controller.adminship_error"),
+                    :status => :forbidden
+          }
+        end
+        return
+      end
+    end
+    
     def check_repository_for_commits
       unless @repository.has_commits?
         flash[:notice] = I18n.t "application.no_commits_notice"

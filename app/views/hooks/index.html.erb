@@ -1,0 +1,53 @@
+<%
+#--
+#   Copyright (C) 2009 Nokia Corporation and/or its subsidiary(-ies)
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU Affero General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU Affero General Public License for more details.
+#
+#   You should have received a copy of the GNU Affero General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#++
+%>
+
+<% @page_title = t("views.hooks.repository_web_hooks") -%>
+<%= breadcrumbs_from(@root) -%>
+
+<h1><%= t("views.hooks.repository_web_hooks") %></h1>
+
+<table class="listing">
+	<thead>
+		<th>Created</th>
+		<th>URL</th>
+		<th>Last response</th>
+		<th></th>
+	</thead>
+	<% @hooks.each do |hook| -%>
+	<tr class="<%= cycle('even', 'odd') -%>">
+	  <td><%= hook.created_at.to_s(:short) -%></td>
+	  <td><%=h hook.url -%></td>
+	  <td><code><%=h hook.last_response -%></code></td>
+	  <td>
+      <%= button_to t("views.common.delete"), repo_owner_path(@repository, 
+        :project_repository_hook_path, @repository.project, @repository, hook),
+                 :confirm => t("views.common.confirm"), :method => :delete, :class => "inline" -%>
+	  </td>
+	</tr>
+	<% end -%>
+</table>
+
+<% content_for :sidebar do -%>
+  <ul class="links">
+    <li class="new_hook">
+      <%= link_to t("views.hooks.add_hook"), repo_owner_path(@repository, 
+        :new_project_repository_hook_path, @repository.project, @repository) -%></li>
+  </ul>
+<% end -%>
+

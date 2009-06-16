@@ -210,6 +210,10 @@
         :your_public_key => "Your public key",
         :hint => "It's generally located in ~/.ssh/id_rsa.pub or ~/.ssh/id_dsa.pub. If you want to use multiple keys you'll have to add each of them seperately. <br />The key should be in the format of: <br /><code>ssh-algorithm base64-content you@somehost</code>",
       },
+      :hooks =>  {
+        :repository_web_hooks => "Repository Web Hooks",
+        :add_hook => "Add Hook"
+      },
       :users => {
         :activated => "Activated?",
         :suspended => "Suspended?",

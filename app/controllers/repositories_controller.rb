@@ -23,7 +23,7 @@
 class RepositoriesController < ApplicationController
   before_filter :login_required, :except => [:index, :show, :writable_by]
   before_filter :find_repository_owner
-  before_filter :require_adminship, :only => [:edit, :update, :new, :create, :edit, :update, :committers]
+  before_filter :require_owner_adminship, :only => [:edit, :update, :new, :create, :edit, :update, :committers]
   before_filter :require_user_has_ssh_keys, :only => [:clone, :create_clone]
   before_filter :only_projects_can_add_new_repositories, :only => [:new, :create]
   skip_before_filter :public_and_logged_in, :only => [:writable_by]
@@ -202,22 +202,6 @@ class RepositoriesController < ApplicationController
   end
   
   private    
-    def require_adminship
-      unless @owner.admin?(current_user)
-        respond_to do |format|
-          format.html { 
-            flash[:error] = I18n.t "repositories_controller.adminship_error"
-            redirect_to(@owner) 
-          }
-          format.xml  { 
-            render :text => I18n.t( "repositories_controller.adminship_error"), 
-                    :status => :forbidden 
-          }
-        end
-        return
-      end
-    end
-    
     def only_projects_can_add_new_repositories
       if !@owner.is_a?(Project)
         respond_to do |format|

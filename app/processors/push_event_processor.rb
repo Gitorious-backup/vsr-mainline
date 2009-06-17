@@ -30,7 +30,7 @@ class PushEventProcessor < ApplicationProcessor
     logger.info "Push event. Username is #{hash['username']}, commit summary is #{hash['message']}, gitdir is #{hash['gitdir']}"
     if @repository = Repository.find_by_hashed_path(hash['gitdir'])
       @user = User.find_by_login(hash['username'])
-      @repository.update_attribute(:last_pushed_at, Time.now.utc)
+      @repository.update_attribute(:last_pushed_at, !hash['timestamp'].blank? ? Time.parse(hash['timestamp']) : Time.now.utc)
       self.commit_summary = hash['message']
       log_events
       post_events

@@ -30,16 +30,18 @@ class PushEventProcessorTest < ActiveSupport::TestCase
     repo = repositories(:johans)
     repo.update_attribute(:last_pushed_at, nil)
     @processor.expects(:log_events).returns(true)
+    timestamp = 20.minutes.ago.utc
     json = {
       :gitdir => repo.hashed_path,
       :username => "johan",
       :message => '0000000000000000000000000000000000000000 a9934c1d3a56edfa8f45e5f157869874c8dc2c34 refs/heads/master',
+      :timestamp => timestamp.utc
     }.to_json
     @processor.on_message(json)
     assert_equal users(:johan), @processor.user
     assert_equal repo, @processor.repository
     assert_not_nil repo.reload.last_pushed_at
-    assert repo.last_pushed_at > 5.minutes.ago
+    assert_equal timestamp.utc.to_s, repo.last_pushed_at.utc.to_s
   end
   
   should "returns the correct type and identifier for a new tag" do

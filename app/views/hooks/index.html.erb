@@ -43,6 +43,15 @@
 	<% end -%>
 </table>
 
+<% help_box :left do -%>
+<p>
+  A <em>web hook</em> is a callback URL that Gitorious will post the contents 
+  (such as the commits) of a push to, whenever something is pushed to this 
+  repository. The contents and format is described 
+  <a href="http://gitorious.org/gitorious/pages/WebHooks">here</a>.
+</p>
+<% end -%>
+
 <% content_for :sidebar do -%>
   <ul class="links">
     <li class="new_hook">

@@ -362,6 +362,7 @@
         :confirm_delete => "Please confirm deletion of {{repo}} in {{title}}",
         :message_delete => "Once you press this button the repository will be deleted",
         :btn_delete => "YES I am sure I want to delete this repository permanently",
+        :manage_hooks => "Manage repository hooks",
         :page_title => "Repositories in {{repo}}",
         :title => "Repositories",
         :commits => "Commits",

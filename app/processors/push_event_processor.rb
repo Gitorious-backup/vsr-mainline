@@ -17,8 +17,6 @@
 #++
 
 class PushEventProcessor < ApplicationProcessor
-  PUSH_EVENT_GIT_OUTPUT_SEPARATOR = "\t" unless defined?(PUSH_EVENT_GIT_OUTPUT_SEPARATOR) 
-  PUSH_EVENT_GIT_OUTPUT_SEPARATOR_ESCAPED = "\\\t" unless defined?(PUSH_EVENT_GIT_OUTPUT_SEPARATOR_ESCAPED)
   subscribes_to :push_event
   attr_reader :oldrev, :newrev, :action, :user
   attr_accessor :repository
@@ -102,6 +100,7 @@ class PushEventProcessor < ApplicationProcessor
   
   class EventForLogging
     attr_accessor :event_type, :identifier, :email, :message, :commit_time, :user
+    attr_accessor :commit_object
     attr_reader :commits
     def to_s
       "<PushEventProcessor:EventForLogging type: #{event_type} by #{email} at #{commit_time} with #{identifier}>"
@@ -131,7 +130,7 @@ class PushEventProcessor < ApplicationProcessor
       e.user = user
       result = [e]
       if @identifier == 'master'
-        result = result + events_from_git_log(@newrev) 
+        result = result + events_from_git_log(@newrev)
       end
       return result
     elsif action == :delete
@@ -141,7 +140,7 @@ class PushEventProcessor < ApplicationProcessor
       fetch_commit_details(e, @oldrev, Time.now.utc)
       e.user = user
       return [e]
-    else
+    else # normal commits push
       e = EventForLogging.new
       e.event_type = Action::PUSH
       e.message = "#{@identifier} changed from #{@oldrev[0,7]} to #{@newrev[0,7]}"
@@ -153,51 +152,43 @@ class PushEventProcessor < ApplicationProcessor
   end
     
   def fetch_commit_details(an_event, commit_sha, event_timestamp = nil)
-    sha, email, timestamp, message = git.show({
-      :pretty => git_pretty_format, 
-      :s => true
-    }, commit_sha).split(PUSH_EVENT_GIT_OUTPUT_SEPARATOR_ESCAPED)
-    an_event.email        = email
-    an_event.commit_time  = event_timestamp || Time.at(timestamp.to_i).utc
-    an_event.message      = message
+    commit = commits_from_revspec(commit_sha).first
+    an_event.email        = commit.author.email
+    an_event.commit_time  = event_timestamp || commit.authored_date.utc
+    an_event.message      = commit.message
+  end
+  
+  def commits_from_revspec(revspec)
+    Grit::Commit.find_all(git_repo, revspec, {:timeout => false})
   end
   
   def events_from_git_log(revspec)
     result = []
-    
-    commits = encode(git.log({
-      :pretty => git_pretty_format, 
-      :s => true,
-      :timeout => false,
-    }, revspec)).split("\n")
-    commits.each do |c|
-      sha, email, timestamp, message = c.split(PUSH_EVENT_GIT_OUTPUT_SEPARATOR_ESCAPED)
+    commits_from_revspec(revspec).each do |commit|
       e = EventForLogging.new
-      if email
-        email = email.gsub(/\\(<|>)/, '\1')
-        if user = User.find_by_email_with_aliases(Grit::Actor.from_string(email).email || Grit::Actor.from_string(email).name)
+      if email = commit.author.email
+        if user = User.find_by_email_with_aliases(email)
           e.user = user
         else
           e.email = email
         end
       end
-      e.identifier    = sha
-      e.commit_time   = Time.at(timestamp.to_i).utc
-      e.event_type    = Action::COMMIT
-      e.message       = message
+      e.identifier = commit.id # The SHA-1
+      e.commit_time = commit.authored_date.utc
+      e.event_type = Action::COMMIT
+      e.message = commit.message
+      e.commit_object = commit
       result << e
     end
-    
     result
   end
   
-  def git
-    @git ||= @repository.git.git
+  def git_repo
+    @git_repo ||= @repository.git
   end
   
-  def git_pretty_format
-    fmt = ['%H','%cn <%ce>','%at','%s'].join(PUSH_EVENT_GIT_OUTPUT_SEPARATOR)
-    "format:#{fmt}"
+  def git
+    git_repo.git
   end
   
   def encode(data)

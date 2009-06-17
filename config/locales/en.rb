@@ -212,7 +212,7 @@
       },
       :hooks =>  {
         :repository_web_hooks => "Repository Web Hooks",
-        :add_hook => "Add Hook"
+        :add_hook => "Add Hook",
       },
       :users => {
         :activated => "Activated?",

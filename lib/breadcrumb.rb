@@ -179,6 +179,24 @@ module Breadcrumb
       "update_repository"
     end
   end
+  
+  class RepositoryHooks
+    def initialize(repository)
+      @repository = repository
+    end
+    
+    def breadcrumb_parent
+      EditRepository.new(@repository)
+    end
+    
+    def title
+      I18n.t("views.hooks.repository_web_hooks")
+    end
+    
+    def breadcrumb_css_class
+      "edit_hooks"
+    end
+  end
 
   class NewRepository
     def initialize(project)

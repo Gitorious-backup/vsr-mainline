@@ -90,6 +90,8 @@ module BreadcrumbsHelper
       user_keys_path
     when Message
       an_object.new_record? ? new_message_path : message_path(an_object)
+    when Breadcrumb::EditRepository
+      repo_owner_path(@repository, :edit_project_repository_path, @repository.project, @repository)
     else
       "" # Current path
     end

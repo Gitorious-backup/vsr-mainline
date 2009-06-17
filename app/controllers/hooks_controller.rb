@@ -24,19 +24,19 @@ class HooksController < ApplicationController
   
   def index
     @hooks = @repository.hooks
-    @root = @repository
+    @root = Breadcrumb::RepositoryHooks.new(@repository)
   end
   
   def new
     @hook = @repository.hooks.new
     @hook.user = current_user
-    @root = @repository
+    @root = Breadcrumb::RepositoryHooks.new(@repository)
   end
   
   def create
     @hook = @repository.hooks.new(params[:hook])
     @hook.user = current_user
-    @root = @repository
+    @root = Breadcrumb::RepositoryHooks.new(@repository)
     if @hook.save
       redirect_to repo_owner_path(@repository, :project_repository_hooks_path,
                     @repository.project, @repository)

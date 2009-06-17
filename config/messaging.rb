@@ -14,4 +14,6 @@ ActiveMessaging::Gateway.define do |s|
   s.destination :archive_repo, '/queue/GitoriousRepositoryArchiving'
   s.destination :cc_message, '/queue/GitoriousEmailNotifications'
   
+  s.destination :post_receive_web_hook, "/queue/GitoriousPostReceiveWebHook"
+  
 end

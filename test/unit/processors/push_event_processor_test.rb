@@ -23,25 +23,47 @@ class PushEventProcessorTest < ActiveSupport::TestCase
 
   def setup
     @processor = PushEventProcessor.new
+    @repository = repositories(:johans)
   end
   
   should "update the last_pushed_at attribute on initial push" do
     stub_git_log_and_user
-    repo = repositories(:johans)
-    repo.update_attribute(:last_pushed_at, nil)
+    @repository.update_attribute(:last_pushed_at, nil)
     @processor.expects(:log_events).returns(true)
     timestamp = 20.minutes.ago.utc
     json = {
-      :gitdir => repo.hashed_path,
+      :gitdir => @repository.hashed_path,
       :username => "johan",
       :message => '0000000000000000000000000000000000000000 a9934c1d3a56edfa8f45e5f157869874c8dc2c34 refs/heads/master',
       :timestamp => timestamp.utc
     }.to_json
     @processor.on_message(json)
     assert_equal users(:johan), @processor.user
-    assert_equal repo, @processor.repository
-    assert_not_nil repo.reload.last_pushed_at
-    assert_equal timestamp.utc.to_s, repo.last_pushed_at.utc.to_s
+    assert_equal @repository, @processor.repository
+    assert_not_nil @repository.reload.last_pushed_at
+    assert_equal timestamp.utc.to_s, @repository.last_pushed_at.utc.to_s
+  end
+  
+  should "publish a message into the post_receive_web_hook queue" do
+    stub_git_log_and_user
+    p = proc{
+      timestamp = 20.minutes.ago.utc
+      json = {
+        :gitdir => @repository.hashed_path,
+        :username => "johan",
+        :message => '0000000000000000000000000000000000000000 a9934c1d3a56edfa8f45e5f157869874c8dc2c34 refs/heads/master',
+        :timestamp => timestamp.utc
+      }.to_json
+      @processor.on_message(json)
+    }
+    message = find_message_with_queue_and_regexp('/queue/GitoriousPostReceiveWebHook', 
+                /payload/) { p.call }
+    assert_equal users(:johan).login, message['user']
+    assert_instance_of Hash, message['payload']
+    assert_equal @repository.id, message["repository_id"]
+    assert_equal "0000000000000000000000000000000000000000", message['payload']['before']
+    assert_equal "refs/heads/master", message['payload']['ref']
+    
   end
   
   should "returns the correct type and identifier for a new tag" do

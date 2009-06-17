@@ -16,10 +16,9 @@
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #++
 
-require 'uri'
-require 'net/http'
-
 class PushEventProcessor < ApplicationProcessor
+  include ActiveMessaging::MessageSender
+  
   subscribes_to :push_event
   attr_reader :oldrev, :newrev, :ref, :action, :user
   attr_accessor :repository
@@ -33,7 +32,7 @@ class PushEventProcessor < ApplicationProcessor
       @repository.update_attribute(:last_pushed_at, !hash['timestamp'].blank? ? Time.parse(hash['timestamp']) : Time.now.utc)
       self.commit_summary = hash['message']
       log_events
-      post_events
+      post_web_hook_queue_message
     else
       logger.error("#{self.class.name} received message, but couldn't find repo with hashed_path #{hash['gitdir']}")
     end
@@ -46,25 +45,13 @@ class PushEventProcessor < ApplicationProcessor
     end
   end
 
-  def post_events
-    require 'pp'
-    pp payload
-    return
-    
-    json = payload.to_json
-    @repository.post_receive_urls.each do |url|
-      logger.info("#{self.class.name} posting payload to #{url}")
-      res = Net::HTTP.post_form(URI.parse(url), {'payload' => json})
-      case res
-      when Net::HTTPSuccess
-        logger.info("#{self.class.name} posted successfully. Response: #{res.body}")
-        true
-      when Net::HTTPRedirect
-        true
-      else
-        false
-      end
-    end
+  def post_web_hook_queue_message
+    data = {
+      :user => @user.login,
+      :repository_id => @repository.id,
+      :payload => payload,
+    }
+    publish :post_receive_web_hook, data.to_json
   end
   
   def log_event(an_event)

@@ -56,12 +56,6 @@ class HooksControllerTest < ActionController::TestCase
   end
   
   context "new / create" do
-    setup do
-      @project = projects(:johans)
-      @repository = @project.repositories.mainlines.first
-      login_as :johan
-    end
-    
     should "require login" do
       session[:user_id] = nil
       get :new, :project_id => @project.to_param, :repository_id => @repository.to_param
@@ -103,6 +97,40 @@ class HooksControllerTest < ActionController::TestCase
       end
       assert_response :success
       assert_template "new"
+    end
+  end
+  
+  context "Destroy" do
+    setup do
+      @repository.hooks.create!({
+        :user => users(:johan),
+        :url => "http://example.com"
+      })
+      @hook = @repository.hooks.last
+    end
+    
+    should "require login" do
+      session[:user_id] = nil
+      delete :destroy, :project_id => @project.to_param, 
+        :repository_id => @repository.to_param, :id => @hook.to_param
+      assert_redirected_to(new_sessions_path)
+    end
+    
+    should "require reposítory adminship" do
+      login_as :moe
+      delete :destroy, :project_id => @project.to_param, 
+        :repository_id => @repository.to_param, :id => @hook.to_param
+      assert_match(/only repository admins are allowed/, flash[:error])
+      assert_redirected_to(project_path(@project))
+    end
+    
+    should "delete to the hook" do
+      assert_difference("@repository.hooks.count", -1) do
+        delete :destroy, :project_id => @project.to_param, 
+          :repository_id => @repository.to_param, :id => @hook.to_param
+        assert_response :redirect
+      end
+      assert_redirected_to project_repository_hooks_path(@project, @repository)
     end
   end
 end

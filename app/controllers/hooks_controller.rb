@@ -44,10 +44,13 @@ class HooksController < ApplicationController
       render "new"
     end
   end
-  # 
-  # def destroy
-  #   
-  # end
+  
+  def destroy
+    @hook = @repository.hooks.find(params[:id])
+    @hook.destroy
+    redirect_to repo_owner_path(@repository, :project_repository_hooks_path,
+                  @repository.project, @repository)
+  end
   
   protected
     def find_repository

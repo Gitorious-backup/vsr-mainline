@@ -42,7 +42,7 @@ class Mailer < ActionMailer::Base
 
   def notification_copy(recipient, sender, subject, body, notifiable, message_id)
     @recipients       =  recipient.email
-    @from             = "Gitorious Messenger <no-reply@#{GitoriousConfig['gitorious_host']}>"
+    @from             = "Gitorious Messenger <#{GitoriousConfig['gitorious_support_email']}>"
     @subject          = "New message: " + sanitize(subject)
     @body[:url]       = url_for({
         :controller => 'messages',
@@ -70,7 +70,7 @@ class Mailer < ActionMailer::Base
   end
 
   def new_email_alias(email)
-    @from       = "Gitorious <no-reply@#{GitoriousConfig['gitorious_host']}>"
+    @from       = "Gitorious <#{GitoriousConfig['gitorious_support_email']}>"
     @subject    = "[Gitorious] Please confirm this email alias"
     @sent_on    = Time.now
     @recipients = email.address
@@ -80,7 +80,7 @@ class Mailer < ActionMailer::Base
 
   def message_processor_error(processor, err, message_body)
       subject     "[Gitorious Processor] fail in #{processor.class.name}"
-      from        "Gitorious <no-reply@#{GitoriousConfig['gitorious_host']}>"
+      from        "Gitorious <#{GitoriousConfig['gitorious_support_email']}>"
       recipients  GitoriousConfig['exception_notification_emails']
       body        :error => err, :message => message_body, :processor => processor
   end
@@ -95,7 +95,7 @@ class Mailer < ActionMailer::Base
   protected
     def setup_email(user)
       @recipients  = "#{user.email}"
-      @from        = "Gitorious <no-reply@#{GitoriousConfig['gitorious_host']}>"
+      @from        = "Gitorious <#{GitoriousConfig['gitorious_support_email']}>"
       @subject     = "[Gitorious] "
       @sent_on     = Time.now
       @body[:user] = user
